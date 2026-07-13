@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SENIAT · Panel Fiscal en Tiempo Real</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f0f5fe;
+            color: #1a2636;
+            padding: 20px 30px;
+        }
+        .dashboard { max-width: 1600px; margin: 0 auto; }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header-left h1 {
+            font-weight: 700;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #0a2540;
+        }
+        .header-left h1 i { color: #2563eb; }
+        .header-left .sub {
+            font-size: 13px;
+            color: #5a6f8a;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: #e8eff9;
+            color: #1a3a6a;
+            padding: 6px 18px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge i { color: #2563eb; }
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: #ffffff;
+            border-radius: 18px;
+            padding: 18px 20px;
+            border: 1px solid #d4e0ee;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            border-color: #2563eb;
+            box-shadow: 0 4px 16px rgba(37,99,235,0.10);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .card-header .title {
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #5a6f8a;
+        }
+        .card-header .title i {
+            margin-right: 6px;
+            color: #2563eb;
+        }
+        .card-price {
+            font-size: 28px;
+            font-weight: 700;
+            color: #0a2540;
+            margin: 4px 0 2px;
+        }
+        .card-price .currency {
+            font-size: 14px;
+            font-weight: 400;
+            color: #5a6f8a;
+            margin-left: 4px;
+        }
+        .card-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 2px 14px 2px 10px;
+            border-radius: 20px;
+        }
+        .card-change.up { background: #dcfce7; color: #16a34a; }
+        .card-change.down { background: #fee2e2; color: #dc2626; }
+        .card-sub {
+            font-size: 11px;
+            color: #5a6f8a;
+            margin: 4px 0 8px;
+        }
+        .card-footer {
+            margin-top: 8px;
+            border-top: 1px solid #e8eff9;
+            padding-top: 8px;
+            font-size: 11px;
+            color: #5a6f8a;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .col-span-2 { grid-column: span 2; }
+        .col-span-3 { grid-column: span 3; }
+        
+        .region-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 8px;
+            margin-top: 6px;
+        }
+        .region-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 8px 4px 12px;
+            background: #f4f8ff;
+            border-radius: 24px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .region-item .value {
+            background: #ffffff;
+            padding: 0 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            color: #0a2540;
+            font-size: 11px;
+        }
+        .region-item .rank-badge {
+            font-size: 10px;
+            font-weight: 700;
+            color: #2563eb;
+            background: #dbeafe;
+            padding: 0 8px;
+            border-radius: 12px;
+            margin-right: 4px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #5a6f8a;
+        }
+        .loading i {
+            font-size: 32px;
+            color: #2563eb;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 1200px) {
+            .grid { grid-template-columns: repeat(2, 1fr); }
+            .col-span-2, .col-span-3 { grid-column: span 2; }
+        }
+        @media (max-width: 700px) {
+            body { padding: 10px; }
+            .grid { grid-template-columns: 1fr; }
+            .col-span-2, .col-span-3 { grid-column: span 1; }
+            .header { flex-direction: column; align-items: flex-start; }
+            .region-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <div class="header-left">
+                <h1><i class="fas fa-landmark"></i> SENIAT · Control Fiscal</h1>
+                <div class="sub">
+                    <span><i class="far fa-calendar-alt"></i> <span id="currentDate"></span></span>
+                    <span><i class="fas fa-sync-alt fa-fw"></i> actualización 30s</span>
+                    <span><i class="fas fa-circle" style="color:#22c55e; font-size:10px;"></i> datos reales</span>
+                </div>
+            </div>
+            <div class="badge">
+                <span class="status-dot"></span>
+                <i class="fas fa-database"></i> Metabase API
+                <span id="apiStatus">Conectando...</span>
+            </div>
+        </div>
+
+        <div id="gridContainer" class="grid">
+            <div class="loading">
+                <i class="fas fa-spinner"></i>
+                <p>Cargando datos del SENIAT...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  CONFIGURACIÓN
+        // ============================================================
+        const API_URL = 'http://localhost:8000/api/datos';
+        const UPDATE_INTERVAL = 30000; // 30 segundos
+
+        // ============================================================
+        //  HELPER: Formatear números
+        // ============================================================
+        function formatNumber(num) {
+            return num.toLocaleString('es-VE');
+        }
+
+        // ============================================================
+        //  RENDER DEL DASHBOARD
+        // ============================================================
+        function renderDashboard(data) {
+            const grid = document.getElementById('gridContainer');
+            
+            if (!data || !data.recaudacion) {
+                grid.innerHTML = `<div class="loading"><i class="fas fa-exclamation-triangle"></i><p>Error al cargar datos</p></div>`;
+                return;
+            }
+
+            // Actualizar status
+            document.getElementById('apiStatus').textContent = '✅ Conectado';
+
+            const rec = data.recaudacion;
+            const maq = data.maquinas;
+            const dec = data.declaraciones;
+            const regiones = data.regiones || [];
+
+            const change = rec.tendencia || 0;
+            const changeClass = change >= 0 ? 'up' : 'down';
+            const changeSymbol = change >= 0 ? '▲' : '▼';
+
+            let html = '';
+
+            // --- CARD 1: Recaudación Total ---
+            html += `
+                <div class="card col-span-2">
+                    <div class="card-header">
+                        <span class="title"><i class="fas fa-coins"></i> Recaudación Total</span>
+                    </div>
+                    <div class="card-price">${formatNumber(rec.total)} <span class="currency">Bs</span></div>
+                    <div class="card-change ${changeClass}">${changeSymbol} ${Math.abs(change).toFixed(2)}%</div>
+                    <div class="card-sub">distribución por región</div>
+                    <div class="region-grid">
+            `;
+
+            // Top 6 regiones
+            const topRegiones = regiones.slice(0, 6);
+            topRegiones.forEach((r, idx) => {
+                const chg = r.tendencia || 0;
+                const clr = chg >= 0 ? '#16a34a' : '#dc2626';
+                const sym = chg >= 0 ? '▲' : '▼';
+                html += `
+                    <div class="region-item">
+                        <span><span class="rank-badge">#${idx + 1}</span> ${r.region}</span>
+                        <span class="value">${formatNumber(r.total)}</span>
+                        <span style="font-size:9px; font-weight:600; color:${clr}; margin-left:2px;">${sym} ${Math.abs(chg).toFixed(1)}%</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
+                    <div class="card-footer">
+                        <span>${regiones.length} regiones</span>
+                        <span>actualizado: ${new Date(data.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                </div>
+            `;
+
+            // --- CARD 2: Máquinas Fiscales ---
+            const maqChange = ((maq.activas || 0) / (maq.total || 1) * 100);
+            html += `
+                <div class="card">
+                    <div class="card-header">
+                        <span class="title"><i class="fas fa-cash-register"></i> Máquinas Fiscales</span>
+                    </div>
+                    <div class="card-price">${formatNumber(maq.total)}</div>
+                    <div class="card-change up">▲ ${maqChange.toFixed(1)}% activas</div>
+                    <div class="card-sub">${formatNumber(maq.activas)} activas · ${formatNumber(maq.inactivas)} inactivas</div>
+                    <div class="card-footer">
+                        <span>total registradas</span>
+                        <span>${formatNumber(maq.total)}</span>
+                    </div>
+                </div>
+            `;
+
+            // --- CARD 3: Declaraciones ---
+            const decChange = ((dec.pagadas || 0) / (dec.total || 1) * 100);
+            html += `
+                <div class="card">
+                    <div class="card-header">
+                        <span class="title"><i class="fas fa-file-invoice"></i> Declaraciones</span>
+                    </div>
+                    <div class="card-price">${formatNumber(dec.total)}</div>
+                    <div class="card-change up">▲ ${decChange.toFixed(1)}% pagadas</div>
+                    <div class="card-sub">${formatNumber(dec.pagadas)} pagadas · ${formatNumber(dec.pendientes)} pendientes</div>
+                    <div class="card-footer">
+                        <span>total declaraciones</span>
+                        <span>${formatNumber(dec.total)}</span>
+                    </div>
+                </div>
+            `;
+
+            // --- CARD 4: Resumen ---
+            html += `
+                <div class="card">
+                    <div class="card-header">
+                        <span class="title"><i class="fas fa-chart-pie"></i> Resumen Fiscal</span>
+                    </div>
+                    <div class="card-price" style="font-size:20px;">SENIAT</div>
+                    <div style="font-size:13px; color:#5a6f8a; margin:4px 0;">
+                        <div>📊 Recaudación: ${formatNumber(rec.total)}</div>
+                        <div>🏢 Máquinas: ${formatNumber(maq.total)}</div>
+                        <div>📄 Declaraciones: ${formatNumber(dec.total)}</div>
+                        <div>🌎 Regiones: ${regiones.length}</div>
+                    </div>
+                    <div class="card-footer">
+                        <span>datos en tiempo real</span>
+                        <span>${new Date().toLocaleTimeString()}</span>
+                    </div>
+                </div>
+            `;
+
+            grid.innerHTML = html;
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        // ============================================================
+        //  FETCH DATOS
+        // ============================================================
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                renderDashboard(data);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('apiStatus').textContent = '❌ Error';
+                document.getElementById('gridContainer').innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i>
+                        <p>Error al conectar con la API: ${error.message}</p>
+                        <p style="font-size:12px; margin-top:8px;">Verifica que el servidor esté corriendo en http://localhost:8000</p>
+                    </div>
+                `;
+            }
+        }
+
+        // ============================================================
+        //  INICIALIZAR
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            fetchData();
+            setInterval(fetchData, UPDATE_INTERVAL);
+        });
+    </script>
+</body>
+</html>

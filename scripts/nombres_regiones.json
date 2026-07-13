@@ -1,0 +1,1 @@
+{"database":21,"type":"native","native":{"query":"SELECT NOMBRE_REGION FROM DATOSCONTRIBUYENTE.REGION"},"parameters":[]} 

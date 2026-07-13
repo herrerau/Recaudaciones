@@ -1,0 +1,1 @@
+{"database":21,"type":"native","native":{"query":"SELECT COUNT(*) FROM DATOSCONTRIBUYENTE.REGION"},"parameters":[]} 

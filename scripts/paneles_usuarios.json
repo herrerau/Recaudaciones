@@ -1,0 +1,18 @@
+{
+  "usuarios": {
+    "operador_capital": {
+      "nombre_usuario": "Operador Región Capital",
+      "regiones_permitidas": ["REGION CAPITAL", "REGION LIBERTADOR"],
+      "mostrar_recaudacion": true,
+      "mostrar_maquinas": true,
+      "mostrar_declaraciones": true
+    },
+    "fiscal_andes": {
+      "nombre_usuario": "Fiscalía Los Andes",
+      "regiones_permitidas": ["REGION LOS ANDES"],
+      "mostrar_recaudacion": true,
+      "mostrar_maquinas": false,
+      "mostrar_declaraciones": true
+    }
+  }
+}
