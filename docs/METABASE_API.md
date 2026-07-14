@@ -218,114 +218,44 @@ curl -s -X POST \
 
 ---
 
-## 7. Ejemplos en Python
+## 7. Ejemplo de uso en TypeScript (Next.js)
 
-### Consulta genérica (stdlib, sin dependencias extra)
+La lógica de consultas vive en [`lib/metabase.ts`](../lib/metabase.ts). A continuación un ejemplo simplificado:
 
-```python
-import json
-import os
-import urllib.request
+```typescript
+import { metabaseQuery } from "@/lib/metabase";
 
-BASE = os.environ["METABASE_URL"]
-API_KEY = os.environ["METABASE_API_KEY"]
-DB_ID = int(os.environ.get("METABASE_DATABASE_ID", "22"))
-
-
-def metabase_query(sql: str, database_id: int = DB_ID, max_rows: int = 10000):
-    body = {
-        "database": database_id,
-        "type": "native",
-        "native": {"query": sql},
-        "parameters": [],
-        "constraints": {
-            "max-results": max_rows,
-            "max-results-bare-rows": max_rows,
-        },
-    }
-    req = urllib.request.Request(
-        f"{BASE}/api/dataset",
-        data=json.dumps(body).encode(),
-        headers={"x-api-key": API_KEY, "Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=600) as resp:
-        result = json.load(resp)
-
-    if result.get("status") == "failed":
-        raise RuntimeError(result.get("error") or "consulta fallida")
-
-    data = result["data"]
-    cols = [c["name"] for c in data["cols"]]
-    rows = data["rows"]
-    return cols, rows
-
-
-cols, rows = metabase_query(
-    "SELECT ID_LIB_REPORTEZ, FECHA_REPORTEZ "
-    "FROM ITAXUSER.LIB_REPORTEZ WHERE ROWNUM <= 3"
-)
-print(cols)
-print(rows)
+// Consulta genérica
+const rows = await metabaseQuery(
+  `SELECT ID_LIB_REPORTEZ, FECHA_REPORTEZ
+   FROM ITAXUSER.LIB_REPORTEZ
+   WHERE ROWNUM <= 3`,
+  22 // database ID
+);
+console.log(rows);
 ```
 
-### Buscar tabla y leer metadata
-
-```python
-import json
-import urllib.request
-
-def api_get(path: str):
-    req = urllib.request.Request(
-        f"{BASE}{path}",
-        headers={"x-api-key": API_KEY},
-    )
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return json.load(resp)
-
-# Buscar LIB_REPORTEZ en SENIATFE
-search = api_get("/api/search?q=LIB_REPORTEZ")
-for item in search.get("data", search):
-    if item.get("database_id") == 22 and item.get("table_name") == "LIB_REPORTEZ":
-        table_id = item["id"]
-        meta = api_get(f"/api/table/{table_id}/query_metadata")
-        for f in meta["fields"]:
-            print(f["name"], f["base_type"])
-        break
-```
+Las funciones exportadas por `lib/metabase.ts` (como `getRecaudacionTotalBs()`, `getRecaudacionRegionesHoy()`, etc.) ya encapsulan las consultas SQL y el parseo de resultados.
 
 ---
 
-## 8. Scripts del proyecto que usan Metabase
+## 8. Ejecución del proyecto
 
-| Script | Base (ID) | Función |
-|---|---|---|
-| `api_server.py` | 21 (DataWarehouse) | Servidor API standalone (Python) |
-
-> **Nota:** Los scripts `explorar_metabase.py` y `extraer_declaraciones.py` mencionados en versiones anteriores de esta documentación ya no forman parte del repositorio actual.
-
-### Ejecutar exploración SENIATFE
+### Instalar dependencias e iniciar
 
 ```bash
-# Cargar variables de entorno (Linux/macOS)
-set -a && source .env && set +a
-
-# Ejecutar el servidor Python standalone
-python3 api_server.py
-```
-
-### Ejecutar el servidor Next.js
-
-```bash
-# Instalar dependencias
 npm install
-
-# Iniciar en modo desarrollo
 npm run dev
 ```
 
+El servidor estará disponible en [http://localhost:3000](http://localhost:3000).
 
+### Compilar para producción
 
+```bash
+npm run build
+npm start
+```
 ---
 
 ## 9. Buenas prácticas y límites
@@ -401,6 +331,6 @@ curl -s -o /dev/null -w "HTTP %{http_code}\n" \
 
 - `.env` — credenciales y IDs de bases (no versionado)
 - `.env.example` — plantilla de variables de entorno
-- `api_server.py` — servidor API standalone (Python)
-- `lib/metabase.ts` — lógica de datos en TypeScript (Next.js)
+- `lib/metabase.ts` — lógica de conexión a Metabase y consultas SQL
+- `lib/paneles.ts` — gestión de paneles por usuario
 - `docs/sql/` — consultas SQL de referencia

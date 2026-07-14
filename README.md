@@ -50,14 +50,13 @@ El **SENIAT Dashboard Fiscal** es un sistema de monitoreo en tiempo real que per
 
 | Capa | Tecnología |
 |---|---|
-| Frontend (Next.js) | Next.js 15, React 19, TypeScript |
-| Frontend (estático) | HTML5, CSS3, JavaScript vanilla |
-| Backend (Next.js) | API Routes de Next.js (TypeScript) |
-| Backend (standalone) | Python 3.8+ (stdlib — sin dependencias externas) |
+| Framework | Next.js 15 (App Router) |
+| UI | React 19, TypeScript |
+| Estilos | CSS vanilla |
+| Tipografía | Google Fonts (Inter) |
+| Iconos | Font Awesome 6 |
 | Base de datos | Oracle 19c (vía Metabase API) |
 | Conexión a datos | Metabase API (`POST /api/dataset`) |
-
-> **Nota:** El proyecto mantiene dos modos de ejecución: un servidor Python standalone (`api_server.py`) y una aplicación Next.js. Ambos comparten la misma lógica de datos y endpoints.
 
 ---
 
@@ -65,18 +64,17 @@ El **SENIAT Dashboard Fiscal** es un sistema de monitoreo en tiempo real que per
 
 ```
 ┌─────────────────────────────┐
-│  FRONTEND (Dashboard)       │
-│  · Panel Admin              │
-│  · Panel Usuario            │
+│  FRONTEND (Next.js)         │
+│  · Panel Admin (/)          │
+│  · Panel Usuario (/usuario) │
 │  · Ticker Banner            │
 │  · Tabla de Regiones        │
 └──────────┬──────────────────┘
-           │ HTTP / JSON
+           │ HTTP / JSON (API Routes)
            ▼
 ┌─────────────────────────────┐
-│  API SERVER                 │
-│  · Next.js API Routes (TS)  │
-│  · ó api_server.py (Python) │
+│  BACKEND (Next.js API)      │
+│  · API Routes (TypeScript)  │
 │  · Caché en memoria (30s)   │
 │  · Motor de consultas SQL   │
 └──────────┬──────────────────┘
@@ -101,12 +99,12 @@ El **SENIAT Dashboard Fiscal** es un sistema de monitoreo en tiempo real que per
 ### Flujo de Datos
 
 1. El usuario accede al dashboard en el navegador.
-2. El dashboard realiza peticiones HTTP a la API.
-3. La API verifica la caché (30 segundos de validez).
-4. Si la caché expiró, la API consulta Metabase.
+2. Los componentes React realizan `fetch` a las API Routes de Next.js.
+3. Las API Routes verifican la caché (30 segundos de validez).
+4. Si la caché expiró, se consulta la API de Metabase.
 5. Metabase ejecuta las consultas SQL en Oracle.
-6. La API procesa, enriquece y cachea los resultados.
-7. El dashboard recibe JSON y renderiza las visualizaciones.
+6. Las API Routes procesan, enriquecen y cachean los resultados.
+7. Los componentes React reciben JSON y renderizan las visualizaciones.
 
 ---
 
@@ -114,7 +112,7 @@ El **SENIAT Dashboard Fiscal** es un sistema de monitoreo en tiempo real que per
 
 ```
 Recaudaciones/
-├── app/                            # Aplicación Next.js
+├── app/                            # Aplicación Next.js (App Router)
 │   ├── page.tsx                    # Página principal (admin)
 │   ├── layout.tsx                  # Layout raíz
 │   ├── admin-panel.tsx             # Componente del panel admin
@@ -136,26 +134,14 @@ Recaudaciones/
 │       └── admin/
 │           ├── config/route.ts     # GET|POST /api/admin/config
 │           └── guardar/route.ts    # POST /api/admin/guardar
-├── lib/                            # Lógica de negocio compartida (TS)
-│   ├── metabase.ts                 # Conexión a Metabase y consultas
+├── lib/                            # Lógica de negocio compartida
+│   ├── metabase.ts                 # Conexión a Metabase y consultas SQL
 │   └── paneles.ts                  # Gestión de paneles por usuario
-├── frontend/                       # Frontend estático (servidor Python)
-│   ├── templates/
-│   │   ├── admin.html              # Panel de administración
-│   │   └── usuario.html            # Dashboard de usuario
-│   └── static/
-│       ├── css/
-│       │   ├── admin.css
-│       │   └── dashboard.css
-│       └── js/
-│           ├── admin.js
-│           └── dashboard.js
 ├── docs/                           # Documentación técnica
 │   ├── METABASE_API.md             # Guía de uso de la API de Metabase
 │   └── sql/                        # Consultas SQL de referencia
 │       ├── declaraciones/
 │       └── recaudaciones/
-├── api_server.py                   # Servidor API standalone (Python)
 ├── paneles_usuarios.json           # Configuración de paneles
 ├── .env.example                    # Plantilla de variables de entorno
 ├── .gitignore
@@ -171,8 +157,7 @@ Recaudaciones/
 
 ### Requisitos
 
-- **Node.js** 18+ y **npm** (para Next.js)
-- **Python** 3.8+ (para el servidor standalone)
+- **Node.js** 18+ y **npm**
 - Navegador actualizado (Chrome, Firefox, Edge)
 - Conexión a la red de SENIAT (para la API de Metabase)
 
@@ -183,7 +168,13 @@ git clone https://github.com/herrerau/Recaudaciones.git
 cd Recaudaciones
 ```
 
-### 2. Configurar Variables de Entorno
+### 2. Instalar Dependencias
+
+```bash
+npm install
+```
+
+### 3. Configurar Variables de Entorno
 
 Copiar el archivo de ejemplo y completar con las credenciales reales:
 
@@ -203,28 +194,26 @@ CACHE_DURATION=30
 
 > **Importante:** Nunca subas el archivo `.env` al repositorio. Está incluido en `.gitignore`.
 
-### 3a. Ejecutar con Next.js (Recomendado)
+### 4. Ejecutar en Desarrollo
 
 ```bash
-npm install
 npm run dev
 ```
 
 Abre [http://localhost:3000](http://localhost:3000) en el navegador.
 
-### 3b. Ejecutar con el Servidor Python (Standalone)
+### 5. Compilar para Producción
 
 ```bash
-python api_server.py
+npm run build
+npm start
 ```
-
-Abre [http://localhost:8000](http://localhost:8000) en el navegador.
 
 ---
 
 ## Endpoints de la API
 
-Todos los endpoints devuelven JSON y están disponibles tanto en Next.js como en el servidor Python.
+Todos los endpoints son **API Routes de Next.js** y devuelven JSON.
 
 ### Endpoints de Datos
 
@@ -259,19 +248,6 @@ Todos los endpoints devuelven JSON y están disponibles tanto en Next.js como en
 }
 ```
 
-### Ejemplo de Respuesta — `GET /api/regiones`
-
-```json
-{
-  "regiones": [
-    { "region": "SECTOR DE TRIBUTOS INTERNOS MARACAIBO", "total": 456789.12 },
-    { "region": "SECTOR DE TRIBUTOS INTERNOS CARACAS", "total": 345678.90 }
-  ],
-  "total_general": 802468.02,
-  "timestamp": "2026-07-14T10:30:00.000Z"
-}
-```
-
 ---
 
 ## Estructura de Datos
@@ -303,18 +279,8 @@ Todos los endpoints devuelven JSON y están disponibles tanto en Next.js como en
   },
   "regiones": [ ... ],
   "aduanas": [ ... ],
-  "contribuyentes": [
-    {
-      "nombre": "EMPRESA EJEMPLO C.A.",
-      "rif": "J-12345678-9",
-      "cantidad_pagos": 15,
-      "total": 250000.00
-    }
-  ],
-  "ticker": [
-    { "titulo": "💰 Recaudación USD", "valor": 34567.12, "cambio": 0 },
-    { "titulo": "🇻🇪 Recaudación Bs", "valor": 1234567.89, "cambio": 0 }
-  ],
+  "contribuyentes": [ ... ],
+  "ticker": [ ... ],
   "configuracion": {
     "tipos_documento": 148,
     "filtro_situacion": "22",
@@ -341,8 +307,8 @@ Todos los endpoints devuelven JSON y están disponibles tanto en Next.js como en
 
 | Ruta | Descripción |
 |---|---|
-| `/` (ó `/admin.html`) | Panel de administración — crear y gestionar pantallas |
-| `/usuario?user=<ID>` (ó `/usuario.html?user=<ID>`) | Dashboard personalizado por usuario/pantalla |
+| `/` | Panel de administración — crear y gestionar pantallas |
+| `/usuario?user=<ID>` | Dashboard personalizado por usuario/pantalla |
 
 ---
 
@@ -369,12 +335,12 @@ LEFT JOIN "DATOSCONTRIBUYENTE"."DEPENDENCIA" dep
 WHERE p.FECHA_RECAUDACION_PAGO = TRUNC(SYSDATE)
     AND p.SITUACION_PAGO = '22'
     AND p.CONCILIADO_PAGO = 'N'
-    AND (TIPO_DOCUMENTO_PAGO = '00011' OR TIPO_DOCUMENTO_PAGO = '00012' OR ...)
+    AND (TIPO_DOCUMENTO_PAGO = '00011' OR ...)
 GROUP BY dep.NOMBRE_DEPENDENCIA
 ORDER BY TOTAL DESC
 ```
 
-> Para ver la lista completa de tipos de documento, consulte la constante `TIPOS_DOCUMENTO_METABASE` en [`lib/metabase.ts`](lib/metabase.ts) o [`api_server.py`](api_server.py).
+> Para ver la lista completa de tipos de documento, consulte la constante `TIPOS_DOCUMENTO_METABASE` en [`lib/metabase.ts`](lib/metabase.ts).
 
 ---
 
@@ -383,9 +349,9 @@ ORDER BY TOTAL DESC
 ### Inicio del Sistema
 
 1. Configurar el archivo `.env` (ver [Instalación](#instalación-y-configuración)).
-2. Ejecutar el servidor (Next.js o Python).
-3. Abrir el dashboard en el navegador.
-4. Verificar el indicador de conexión ("API local activa" / "Conectado").
+2. Ejecutar `npm run dev`.
+3. Abrir [http://localhost:3000](http://localhost:3000).
+4. Verificar el indicador de conexión ("API local activa").
 
 ### Panel de Administración (`/`)
 
@@ -412,9 +378,6 @@ Muestra los datos filtrados según la configuración de la pantalla:
 - **`.env`** está en `.gitignore` para evitar exposición accidental.
 - **Caché**: Los datos se mantienen en memoria, no se persisten en disco.
 - **Conexión HTTPS**: Comunicación cifrada con la API de Metabase.
-- **CORS**: Configurado para `localhost` en desarrollo.
-
-> **Advertencia:** El servidor Python standalone incluye un endpoint `/api/sql` que permite ejecutar consultas SQL arbitrarias. Este endpoint es solo para desarrollo/depuración y **no debe exponerse en producción**.
 
 ---
 
@@ -422,26 +385,23 @@ Muestra los datos filtrados según la configuración de la pantalla:
 
 | Problema | Causa Probable | Solución |
 |---|---|---|
-| El servidor no inicia | Puerto ocupado | Verificar con `netstat -ano \| findstr :8000` (Python) o `:3000` (Next.js) |
-| API no responde | Servidor no está corriendo | Ejecutar `curl http://localhost:8000/api/status` |
-| Datos no cargan | Sin conexión a Metabase | Verificar conectividad de red y API Key en `.env` |
-| Error HTTP 401/403 | Token inválido o revocado | Verificar `METABASE_API_KEY` en `.env` |
-| Consultas SQL fallan | Tablas inexistentes o permisos | Revisar esquema (`DBO.` vs `ITAXUSER.`) y permisos del usuario |
-| Caché no se actualiza | Tiempo de caché no expirado | Reiniciar el servidor o esperar 30 segundos |
 | `npm run dev` falla | Dependencias no instaladas | Ejecutar `npm install` |
+| El servidor no inicia | Puerto 3000 ocupado | Verificar con `netstat -ano \| findstr :3000` |
+| Datos no cargan | Sin conexión a Metabase | Verificar conectividad y API Key en `.env` |
+| Error HTTP 401/403 | Token inválido o revocado | Verificar `METABASE_API_KEY` en `.env` |
+| Consultas SQL fallan | Tablas inexistentes o permisos | Revisar esquema (`DBO.` vs `ITAXUSER.`) |
+| Caché no se actualiza | Tiempo de caché no expirado | Esperar 30 segundos o reiniciar el servidor |
 
 ---
 
 ## Próximas Mejoras
 
+- [ ] Gráficas de tendencia interactivas (series temporales, barras comparativas).
+- [ ] Dashboards configurables con widgets arrastrables.
 - [ ] Autenticación de usuarios (login/roles).
 - [ ] Exportación de datos (CSV, Excel, PDF).
 - [ ] Alertas y notificaciones por umbral.
-- [ ] Panel de administración avanzado.
-- [ ] Historial de consultas y auditoría.
-- [ ] Dashboard personalizable (drag & drop).
 - [ ] Mapas de calor geográficos interactivos.
-- [ ] Análisis predictivo con IA.
 
 ---
 
