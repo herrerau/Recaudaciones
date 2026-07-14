@@ -1,1 +1,0 @@
-{"database":22,"type":"native","native":{"query":"SELECT ID_LIB_REPORTEZ, FECHA_REPORTEZ FROM ITAXUSER.LIB_REPORTEZ WHERE ROWNUM <= 1"},"parameters":[]} 

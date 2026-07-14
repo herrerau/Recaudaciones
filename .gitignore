@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+
+# Next.js
+.next/
+out/
+*.tsbuildinfo
+
+# Entorno / secretos
+.env
+scripts/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Sistema operativo / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

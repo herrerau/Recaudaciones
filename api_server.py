@@ -12,11 +12,37 @@ import mimetypes
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
-METABASE_URL = "https://analisisdatos.seniat.gob.ve"
-METABASE_API_KEY = "mb_fHMYDYO1xgYhh/QlQ8j/c4+i4YVynQHaDE8gc/BV8e0="
-METABASE_DATABASE_ID = 22
-METABASE_DW_ID = 21
-CACHE_DURATION = 30
+# La configuración se lee de variables de entorno (archivo .env).
+# Copia .env.example a .env y coloca ahí tus credenciales.
+# NUNCA subas el .env al repositorio (está en .gitignore).
+
+def _cargar_env(ruta=None):
+    """Carga un archivo .env sencillo en os.environ (sin dependencias externas)."""
+    ruta = ruta or (Path(__file__).resolve().parent / '.env')
+    if not ruta.exists():
+        return
+    with ruta.open('r', encoding='utf-8-sig') as fh:
+        for linea in fh:
+            linea = linea.strip()
+            if not linea or linea.startswith('#') or '=' not in linea:
+                continue
+            clave, _, valor = linea.partition('=')
+            clave = clave.strip()
+            valor = valor.strip().strip('"').strip("'")
+            os.environ.setdefault(clave, valor)
+
+
+_cargar_env()
+
+METABASE_URL = os.environ.get("METABASE_URL", "https://analisisdatos.seniat.gob.ve")
+METABASE_API_KEY = os.environ.get("METABASE_API_KEY", "")
+METABASE_DATABASE_ID = int(os.environ.get("METABASE_DATABASE_ID", "22"))
+METABASE_DW_ID = int(os.environ.get("METABASE_DW_ID", "21"))
+CACHE_DURATION = int(os.environ.get("CACHE_DURATION", "30"))
+
+if not METABASE_API_KEY:
+    print("[ADVERTENCIA] METABASE_API_KEY no está definida. "
+          "Crea un archivo .env (ver .env.example) con tus credenciales.")
 
 cache = {}
 cache_timestamp = None
