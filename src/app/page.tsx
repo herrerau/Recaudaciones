@@ -3,6 +3,7 @@ import PanelToggles from "@/components/PanelToggles";
 import TrendSlides from "@/components/TrendSlides";
 import ChatPanel from "@/components/ChatPanel";
 import RefreshCountdown from "@/components/RefreshCountdown";
+import SidebarToggle from "@/components/SidebarToggle";
 import { getTrendSlides } from "@/lib/trends-data";
 
 export default async function Home() {
@@ -14,8 +15,10 @@ export default async function Home() {
 
       <main className="flex-1 flex flex-col min-w-0 bg-[var(--background)]">
         <header className="h-14 border-b border-[var(--border-hairline)] flex items-center justify-between px-6 shrink-0 bg-[var(--background)]">
-          <div className="flex items-center gap-6">
-            <h1 className="text-[1.125rem] font-semibold text-[var(--foreground)]">
+          <div className="flex items-center gap-4">
+            <SidebarToggle />
+            <div className="h-5 w-[1px] bg-[var(--border-hairline)] hidden sm:block" />
+            <h1 className="text-[1.125rem] font-semibold text-[var(--foreground)] hidden sm:block">
               Panorama Nacional
             </h1>
             <RefreshCountdown refreshInterval={60} />

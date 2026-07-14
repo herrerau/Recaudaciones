@@ -29,26 +29,24 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0d0d0d;
-    --surface-1: #1a1a19;
-    --foreground: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
-    --gridline: #2c2c2a;
-    --axis: #383835;
-    --border-hairline: rgba(255, 255, 255, 0.1);
-    --delta-good: #0ca30c;
-    --delta-bad: #e66767;
+:root.dark {
+  --background: #0d0d0d;
+  --surface-1: #1a1a19;
+  --foreground: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --gridline: #2c2c2a;
+  --axis: #383835;
+  --border-hairline: rgba(255, 255, 255, 0.1);
+  --delta-good: #0ca30c;
+  --delta-bad: #e66767;
 
-    --series-1: #3987e5;
-    --series-2: #199e70;
-    --series-3: #c98500;
-    --series-1-soft: rgba(57, 135, 229, 0.18);
-    --series-2-soft: rgba(25, 158, 112, 0.18);
-    --series-3-soft: rgba(201, 133, 0, 0.18);
-  }
+  --series-1: #3987e5;
+  --series-2: #199e70;
+  --series-3: #c98500;
+  --series-1-soft: rgba(57, 135, 229, 0.18);
+  --series-2-soft: rgba(25, 158, 112, 0.18);
+  --series-3-soft: rgba(201, 133, 0, 0.18);
 }
 
 body {
