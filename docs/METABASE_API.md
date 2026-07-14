@@ -12,7 +12,7 @@ Documento de referencia para consultar datos Oracle a través de la instancia Me
 |---|---|---|
 | URL principal | `METABASE_URL` | `https://analisisdatos.seniat.gob.ve` |
 | URL alterna (red interna) | `METABASE_URL_ALT` | `http://172.16.56.75:3000` |
-| API Key (token) | `METABASE_API_KEY` | `mb_fHMYDYO1xgYhh/QlQ8j/c4+i4YVynQHaDE8gc/BV8e0=` |
+| API Key (token) | `METABASE_API_KEY` | *(ver archivo `.env`)* |
 | Usuario asociado al token | — | `API SENIATFE` (superuser) |
 | Base SENIAT FE | `METABASE_DATABASE_ID` | `22` |
 | Nombre base SENIAT FE | `METABASE_DATABASE_NAME` | `SENIATFE` |
@@ -31,7 +31,7 @@ O exportar manualmente:
 
 ```bash
 export METABASE_URL="https://analisisdatos.seniat.gob.ve"
-export METABASE_API_KEY="mb_fHMYDYO1xgYhh/QlQ8j/c4+i4YVynQHaDE8gc/BV8e0="
+export METABASE_API_KEY="<TU_API_KEY_AQUÍ>"  # ver .env.example
 export METABASE_DATABASE_ID=22
 export METABASE_SCHEMA=ITAXUSER
 export METABASE_DW_ID=21
@@ -300,27 +300,31 @@ for item in search.get("data", search):
 
 | Script | Base (ID) | Función |
 |---|---|---|
-| `explorar_metabase.py` | 22 (SENIATFE) | Explora tablas, metadata, conteos y joins de reportes Z |
-| `extraer_declaraciones.py` | 21 (DataWarehouse) | Extracción incremental de declaraciones IVA 30 |
+| `api_server.py` | 21 (DataWarehouse) | Servidor API standalone (Python) |
+
+> **Nota:** Los scripts `explorar_metabase.py` y `extraer_declaraciones.py` mencionados en versiones anteriores de esta documentación ya no forman parte del repositorio actual.
 
 ### Ejecutar exploración SENIATFE
 
 ```bash
+# Cargar variables de entorno (Linux/macOS)
 set -a && source .env && set +a
-python3 explorar_metabase.py
+
+# Ejecutar el servidor Python standalone
+python3 api_server.py
 ```
 
-### Ejecutar extracción de declaraciones
+### Ejecutar el servidor Next.js
 
 ```bash
-set -a && source .env && set +a
-python3 extraer_declaraciones.py declaracion --mes 2025-05
-python3 extraer_declaraciones.py declaracion --todos
-python3 extraer_declaraciones.py contribuyentes
-python3 extraer_declaraciones.py unir
+# Instalar dependencias
+npm install
+
+# Iniciar en modo desarrollo
+npm run dev
 ```
 
-Salida por defecto: `data/declaraciones_iva30/`.
+
 
 ---
 
@@ -395,8 +399,8 @@ curl -s -o /dev/null -w "HTTP %{http_code}\n" \
 
 ## 12. Referencias en el repositorio
 
-- `.env` — credenciales y IDs de bases
-- `CONTEXTO.md` — contexto general del proyecto y modelo de datos
-- `CONTEXTO_BASE_DATOS_SENIATFE.md` — documentación detallada de tablas SENIATFE
-- `explorar_metabase.py` — cliente de referencia para SENIATFE
-- `extraer_declaraciones.py` — cliente de referencia para DataWarehouse
+- `.env` — credenciales y IDs de bases (no versionado)
+- `.env.example` — plantilla de variables de entorno
+- `api_server.py` — servidor API standalone (Python)
+- `lib/metabase.ts` — lógica de datos en TypeScript (Next.js)
+- `docs/sql/` — consultas SQL de referencia

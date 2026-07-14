@@ -319,7 +319,7 @@ def get_recaudacion_aduanas_hoy():
 
 def get_recaudacion_ayer_bs():
     """Obtiene la recaudación del día anterior en Bs - DATOS HISTÓRICOS - NO CAMBIAN"""
-    sql = f"""
+    sql = """
     SELECT 
         SUM(MONTO_TOTAL_PAGO) AS TOTAL
     FROM "DBO"."MOVIMIENTO_PAGO"
@@ -335,7 +335,7 @@ def get_recaudacion_ayer_bs():
 
 def get_recaudacion_ayer_usd():
     """Obtiene la recaudación del día anterior en USD - DATOS HISTÓRICOS - NO CAMBIAN"""
-    sql = f"""
+    sql = """
     SELECT 
         SUM(p.MONTO_TOTAL_PAGO / t.RAT_EXC) AS TOTAL_USD
     FROM "DBO"."MOVIMIENTO_PAGO" p
@@ -354,7 +354,7 @@ def get_recaudacion_ayer_usd():
 
 def get_pagos_sin_conciliar_ayer():
     """Obtiene la cantidad de pagos sin conciliar del día anterior - DATOS HISTÓRICOS"""
-    sql = f"""
+    sql = """
     SELECT 
         COUNT(*) AS TOTAL
     FROM "DBO"."MOVIMIENTO_PAGO"
@@ -370,7 +370,7 @@ def get_pagos_sin_conciliar_ayer():
 
 def get_recaudacion_ayer_por_region():
     """Obtiene recaudación por región del día anterior - DATOS HISTÓRICOS"""
-    sql = f"""
+    sql = """
     SELECT 
         dep.NOMBRE_DEPENDENCIA as REGION,
         SUM(p.MONTO_TOTAL_PAGO) AS TOTAL
@@ -400,7 +400,7 @@ def get_recaudacion_ayer_por_region():
 
 def get_recaudacion_ayer_por_aduana():
     """Obtiene recaudación por aduana del día anterior - DATOS HISTÓRICOS"""
-    sql = f"""
+    sql = """
     SELECT 
         dep.NOMBRE_DEPENDENCIA as ADUANA,
         SUM(p.MONTO_TOTAL_PAGO) AS TOTAL
@@ -626,6 +626,9 @@ def obtener_datos_completos():
 
 # ============================================================
 # ENDPOINT SQL PERSONALIZADO
+# ⚠️ ADVERTENCIA: Este endpoint permite ejecutar SQL arbitraria
+# sin autenticación. Solo debe usarse en entornos de desarrollo.
+# NO exponer en producción.
 # ============================================================
 def ejecutar_sql_personalizada(path):
     """Ejecuta SQL personalizada desde la URL"""
@@ -719,14 +722,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 }
             })
         
-        elif self.path == '/api/datos':
+        elif path == '/api/datos':
             self.enviar_respuesta(obtener_datos_completos())
         
-        elif self.path == '/api/ticker':
+        elif path == '/api/ticker':
             datos = obtener_datos_completos()
             self.enviar_respuesta(datos.get("ticker", []))
         
-        elif self.path == '/api/recaudacion':
+        elif path == '/api/recaudacion':
             self.enviar_respuesta({
                 "total_bs": get_recaudacion_total_bs(),
                 "total_usd": get_recaudacion_total_usd(),
@@ -735,7 +738,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "pagos_sin_conciliar_ayer": get_pagos_sin_conciliar_ayer()
             })
         
-        elif self.path == '/api/recaudacion-ayer':
+        elif path == '/api/recaudacion-ayer':
             self.enviar_respuesta({
                 "total_bs": get_recaudacion_ayer_bs(),
                 "total_usd": get_recaudacion_ayer_usd(),
@@ -744,27 +747,29 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 "fecha": (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
             })
         
-        elif self.path == '/api/regiones':
+        elif path == '/api/regiones':
+            regiones = get_recaudacion_regiones_hoy()
             self.enviar_respuesta({
-                "regiones": get_recaudacion_regiones_hoy(),
-                "total_general": sum(r["total"] for r in get_recaudacion_regiones_hoy()),
+                "regiones": regiones,
+                "total_general": sum(r["total"] for r in regiones),
                 "timestamp": datetime.now().isoformat()
             })
         
-        elif self.path == '/api/aduanas':
+        elif path == '/api/aduanas':
+            aduanas = get_recaudacion_aduanas_hoy()
             self.enviar_respuesta({
-                "aduanas": get_recaudacion_aduanas_hoy(),
-                "total_general": sum(r["total"] for r in get_recaudacion_aduanas_hoy()),
+                "aduanas": aduanas,
+                "total_general": sum(r["total"] for r in aduanas),
                 "timestamp": datetime.now().isoformat()
             })
         
-        elif self.path == '/api/contribuyentes':
+        elif path == '/api/contribuyentes':
             self.enviar_respuesta({
                 "contribuyentes": get_top_contribuyentes_hoy(10),
                 "timestamp": datetime.now().isoformat()
             })
         
-        elif self.path == '/api/verificar':
+        elif path == '/api/verificar':
             self.enviar_respuesta(verificar_recaudacion())
         
         elif path.startswith('/api/sql'):
@@ -785,7 +790,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 try:
                     with open(config_file, 'r', encoding='utf-8') as f:
                         config = json.load(f)
-                except:
+                except (FileNotFoundError, json.JSONDecodeError):
                     config = {"usuarios": {}}
                 
                 config["usuarios"][data.get("user_id")] = {

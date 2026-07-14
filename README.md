@@ -1,518 +1,451 @@
 # SENIAT · Dashboard Fiscal en Tiempo Real
-## Sistema de Monitoreo y Análisis de Datos Tributarios
 
-================================================================================
-INDICE
-================================================================================
+> Sistema de monitoreo y análisis de datos tributarios de la República Bolivariana de Venezuela, conectado a la API de Metabase.
 
-1. Descripcion General
-2. Arquitectura del Sistema
-3. Componentes del Backend
-4. Endpoints API
-5. Estructura de Datos
-6. Frontend Dashboard
-7. Regiones y Consultas SQL
-8. Instalacion y Configuracion
-9. Guia de Uso
-10. Seguridad y Buenas Practicas
-11. Solucion de Problemas
-12. Proximas Mejoras
+---
 
-================================================================================
-1. DESCRIPCION GENERAL
-================================================================================
+## Tabla de Contenidos
 
-Vision del Sistema
-------------------
-El SENIAT Dashboard Fiscal es un sistema de monitoreo en tiempo real que permite 
-visualizar y analizar datos tributarios de la Republica Bolivariana de Venezuela 
-a traves de la API de Metabase. El sistema esta diseñado para proporcionar una 
-vision integral de la recaudacion fiscal, declaraciones tributarias y actividad 
-economica por region.
+- [Descripción General](#descripción-general)
+- [Tecnologías](#tecnologías)
+- [Arquitectura del Sistema](#arquitectura-del-sistema)
+- [Estructura del Repositorio](#estructura-del-repositorio)
+- [Instalación y Configuración](#instalación-y-configuración)
+- [Endpoints de la API](#endpoints-de-la-api)
+- [Estructura de Datos](#estructura-de-datos)
+- [Frontend — Dashboard](#frontend--dashboard)
+- [Regiones y Consultas SQL](#regiones-y-consultas-sql)
+- [Guía de Uso](#guía-de-uso)
+- [Seguridad](#seguridad)
+- [Solución de Problemas](#solución-de-problemas)
+- [Próximas Mejoras](#próximas-mejoras)
 
-Objetivos Principales
----------------------
-1. Monitoreo en Tiempo Real: Visualizacion instantanea de la actividad fiscal
-2. Analisis Regional: Desglose de datos por regiones politico-tributarias
-3. Tendencias y Proyecciones: Identificacion de patrones y estimaciones futuras
-4. Toma de Decisiones: Herramienta para analistas y autoridades tributarias
-5. Transparencia Fiscal: Visualizacion clara de la actividad economica
+---
 
-Funcionalidades Clave
----------------------
-- Recaudacion Total: Visualizacion de montos recaudados en tiempo real
-- Declaraciones por Region: Desglose detallado de declaraciones en 13 regiones
-- Maquinas Fiscales: Estado y distribucion de equipos fiscales
-- Ticker Tape: Banner continuo con variaciones porcentuales
-- Graficas de Tendencia: Evolucion historica de recaudacion
-- Proyecciones: Estimaciones basadas en tendencias actuales
-- Distribucion por Impuesto: Desglose por tipo de tributo
-- Estado de Declaraciones: Pagadas, pendientes, vencidas, en proceso
+## Descripción General
 
-================================================================================
-2. ARQUITECTURA DEL SISTEMA
-================================================================================
+El **SENIAT Dashboard Fiscal** es un sistema de monitoreo en tiempo real que permite visualizar y analizar datos tributarios a través de la API de Metabase. Proporciona una visión integral de la recaudación fiscal, pagos, y actividad económica por región y aduana.
 
-Diagrama de Arquitectura
-------------------------
-FRONTEND (Dashboard)
-  - Ticker Banner
-  - Mapa de Calor
-  - Graficas de Series
-  - Tabla de Regiones
-  - Detalle Diario
-         |
-         v HTTP / JSON
-API SERVER (Python - Puerto 8000)
-  - Endpoints REST
-  - Cache en Memoria (30 segundos)
-  - Motor de Consultas SQL
-  - Lectura de Archivos SQL
-         |
-         v HTTPS / API Key
-METABASE API
-  - https://analisisdatos.seniat.gob.ve
-         |
-         v SQL / Oracle
-BASES DE DATOS ORACLE
-  - SENIATFE (ID: 22)
-    * LIB_REPORTEZ
-    * CONT_MAQUINAS_FISCALES
-  - DataWarehouse (ID: 21)
-    * DBO.DECLARACION
-    * DATOSCONTRIBUYENTE
+### Objetivos Principales
 
-Flujo de Datos
---------------
-1. Usuario accede al dashboard HTML en el navegador
-2. Dashboard hace peticiones HTTP a la API Server (localhost:8000)
-3. API Server verifica cache (30 segundos de validez)
-4. Si la cache esta expirada, API Server consulta Metabase
-5. Metabase ejecuta las consultas SQL en Oracle
-6. Oracle retorna los datos
-7. API Server procesa, enriquece y cachea los datos
-8. Dashboard recibe JSON y renderiza visualizaciones
+1. **Monitoreo en Tiempo Real** — Visualización instantánea de la actividad fiscal del día.
+2. **Análisis Regional** — Desglose de recaudación por regiones y aduanas.
+3. **Comparación Histórica** — Datos de hoy vs. ayer para identificar tendencias.
+4. **Personalización de Paneles** — Pantallas configurables por usuario/región.
+5. **Transparencia Fiscal** — Visualización clara de la actividad económica.
 
-================================================================================
-3. COMPONENTES DEL BACKEND
-================================================================================
+### Funcionalidades Clave
 
-Archivo: api_server.py
-----------------------
-El archivo principal que contiene toda la logica del servidor.
+- Recaudación total en **Bolívares** y **USD** (tiempo real).
+- Recaudación desglosada por **región** y por **aduana**.
+- Top 10 **contribuyentes** del día.
+- Datos del día anterior para comparación.
+- Ticker tape con indicadores clave.
+- Panel de administración para configurar pantallas personalizadas.
+- Verificación de consistencia con los datos de Metabase.
 
-Modulos y Funciones
--------------------
-metabase_query()         - Ejecuta consultas SQL en Metabase
-leer_archivo_sql()       - Lee archivos .sql desde carpeta Declaraciones/
-obtener_sql_region()     - Asocia nombre region con archivo SQL
-calcular_tendencia()     - Calcula variacion porcentual
-get_declaraciones_reales_por_region() - Consulta todas las regiones
-get_recaudacion_total()  - Obtiene totales de LIB_REPORTEZ
-get_maquinas_fiscales()  - Estado de maquinas fiscales
-get_declaraciones()      - Totales de declaraciones
-get_series_temporales()  - Datos de 12 meses
-get_ticker_data()        - Datos para banner
-get_proyecciones()       - Estimaciones futuras
-obtener_datos_completos() - Gestion de cache
+---
 
-Configuracion
--------------
-METABASE_URL = "https://analisisdatos.seniat.gob.ve"
-METABASE_API_KEY = "mb_fHMYDYO1xgYhh/QlQ8j/c4+i4YVynQHaDE8gc/BV8e0="
-METABASE_DATABASE_ID = 22
-METABASE_DW_ID = 21
-CACHE_DURATION = 30
+## Tecnologías
 
-================================================================================
-4. ENDPOINTS API
-================================================================================
+| Capa | Tecnología |
+|---|---|
+| Frontend (Next.js) | Next.js 15, React 19, TypeScript |
+| Frontend (estático) | HTML5, CSS3, JavaScript vanilla |
+| Backend (Next.js) | API Routes de Next.js (TypeScript) |
+| Backend (standalone) | Python 3.8+ (stdlib — sin dependencias externas) |
+| Base de datos | Oracle 19c (vía Metabase API) |
+| Conexión a datos | Metabase API (`POST /api/dataset`) |
 
-Lista Completa de Endpoints
----------------------------
-GET /api/datos           - Todos los datos del sistema
-GET /api/ticker          - Datos para el banner
-GET /api/recaudacion     - Recaudacion total
-GET /api/maquinas        - Maquinas fiscales
-GET /api/declaraciones   - Totales de declaraciones
-GET /api/regiones        - Datos por region
-GET /api/proyecciones    - Proyecciones
-GET /api/region-detalle/{nombre} - Detalle de una region
-GET /api/sql/{query_encoded} - Ejecutar SQL personalizada
-GET /api/status          - Estado del servidor
+> **Nota:** El proyecto mantiene dos modos de ejecución: un servidor Python standalone (`api_server.py`) y una aplicación Next.js. Ambos comparten la misma lógica de datos y endpoints.
 
-Ejemplo de Respuesta /api/regiones
-----------------------------------
+---
+
+## Arquitectura del Sistema
+
+```
+┌─────────────────────────────┐
+│  FRONTEND (Dashboard)       │
+│  · Panel Admin              │
+│  · Panel Usuario            │
+│  · Ticker Banner            │
+│  · Tabla de Regiones        │
+└──────────┬──────────────────┘
+           │ HTTP / JSON
+           ▼
+┌─────────────────────────────┐
+│  API SERVER                 │
+│  · Next.js API Routes (TS)  │
+│  · ó api_server.py (Python) │
+│  · Caché en memoria (30s)   │
+│  · Motor de consultas SQL   │
+└──────────┬──────────────────┘
+           │ HTTPS / API Key
+           ▼
+┌─────────────────────────────┐
+│  METABASE API               │
+│  analisisdatos.seniat.gob.ve│
+└──────────┬──────────────────┘
+           │ SQL / Oracle
+           ▼
+┌─────────────────────────────┐
+│  BASES DE DATOS ORACLE      │
+│  · DataWarehouse (ID: 21)   │
+│    └─ DBO.MOVIMIENTO_PAGO   │
+│    └─ DATOSCONTRIBUYENTE    │
+│  · SENIATFE (ID: 22)        │
+│    └─ ITAXUSER.LIB_REPORTEZ │
+└─────────────────────────────┘
+```
+
+### Flujo de Datos
+
+1. El usuario accede al dashboard en el navegador.
+2. El dashboard realiza peticiones HTTP a la API.
+3. La API verifica la caché (30 segundos de validez).
+4. Si la caché expiró, la API consulta Metabase.
+5. Metabase ejecuta las consultas SQL en Oracle.
+6. La API procesa, enriquece y cachea los resultados.
+7. El dashboard recibe JSON y renderiza las visualizaciones.
+
+---
+
+## Estructura del Repositorio
+
+```
+Recaudaciones/
+├── app/                            # Aplicación Next.js
+│   ├── page.tsx                    # Página principal (admin)
+│   ├── layout.tsx                  # Layout raíz
+│   ├── admin-panel.tsx             # Componente del panel admin
+│   ├── admin.css                   # Estilos del panel admin
+│   ├── usuario/                    # Página del dashboard por usuario
+│   │   ├── page.tsx
+│   │   ├── dashboard-usuario.tsx
+│   │   └── dashboard.css
+│   └── api/                        # API Routes (Next.js)
+│       ├── datos/route.ts          # GET /api/datos
+│       ├── status/route.ts         # GET /api/status
+│       ├── ticker/route.ts         # GET /api/ticker
+│       ├── recaudacion/route.ts    # GET /api/recaudacion
+│       ├── recaudacion-ayer/route.ts
+│       ├── regiones/route.ts       # GET /api/regiones
+│       ├── aduanas/route.ts        # GET /api/aduanas
+│       ├── contribuyentes/route.ts # GET /api/contribuyentes
+│       ├── verificar/route.ts      # GET /api/verificar
+│       └── admin/
+│           ├── config/route.ts     # GET|POST /api/admin/config
+│           └── guardar/route.ts    # POST /api/admin/guardar
+├── lib/                            # Lógica de negocio compartida (TS)
+│   ├── metabase.ts                 # Conexión a Metabase y consultas
+│   └── paneles.ts                  # Gestión de paneles por usuario
+├── frontend/                       # Frontend estático (servidor Python)
+│   ├── templates/
+│   │   ├── admin.html              # Panel de administración
+│   │   └── usuario.html            # Dashboard de usuario
+│   └── static/
+│       ├── css/
+│       │   ├── admin.css
+│       │   └── dashboard.css
+│       └── js/
+│           ├── admin.js
+│           └── dashboard.js
+├── docs/                           # Documentación técnica
+│   ├── METABASE_API.md             # Guía de uso de la API de Metabase
+│   └── sql/                        # Consultas SQL de referencia
+│       ├── declaraciones/
+│       └── recaudaciones/
+├── api_server.py                   # Servidor API standalone (Python)
+├── paneles_usuarios.json           # Configuración de paneles
+├── .env.example                    # Plantilla de variables de entorno
+├── .gitignore
+├── package.json
+├── tsconfig.json
+├── next.config.ts
+└── next-env.d.ts
+```
+
+---
+
+## Instalación y Configuración
+
+### Requisitos
+
+- **Node.js** 18+ y **npm** (para Next.js)
+- **Python** 3.8+ (para el servidor standalone)
+- Navegador actualizado (Chrome, Firefox, Edge)
+- Conexión a la red de SENIAT (para la API de Metabase)
+
+### 1. Clonar el Repositorio
+
+```bash
+git clone https://github.com/herrerau/Recaudaciones.git
+cd Recaudaciones
+```
+
+### 2. Configurar Variables de Entorno
+
+Copiar el archivo de ejemplo y completar con las credenciales reales:
+
+```bash
+cp .env.example .env
+```
+
+Editar `.env` con los valores correspondientes:
+
+```env
+METABASE_URL="https://analisisdatos.seniat.gob.ve"
+METABASE_API_KEY="<TU_API_KEY_AQUÍ>"
+METABASE_DATABASE_ID=22
+METABASE_DW_ID=21
+CACHE_DURATION=30
+```
+
+> **Importante:** Nunca subas el archivo `.env` al repositorio. Está incluido en `.gitignore`.
+
+### 3a. Ejecutar con Next.js (Recomendado)
+
+```bash
+npm install
+npm run dev
+```
+
+Abre [http://localhost:3000](http://localhost:3000) en el navegador.
+
+### 3b. Ejecutar con el Servidor Python (Standalone)
+
+```bash
+python api_server.py
+```
+
+Abre [http://localhost:8000](http://localhost:8000) en el navegador.
+
+---
+
+## Endpoints de la API
+
+Todos los endpoints devuelven JSON y están disponibles tanto en Next.js como en el servidor Python.
+
+### Endpoints de Datos
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` | `/api/status` | Estado del servidor y configuración |
+| `GET` | `/api/datos` | Todos los datos del sistema (con caché) |
+| `GET` | `/api/ticker` | Datos para el banner ticker |
+| `GET` | `/api/recaudacion` | Recaudación total del día (Bs y USD) |
+| `GET` | `/api/recaudacion-ayer` | Recaudación del día anterior |
+| `GET` | `/api/regiones` | Recaudación desglosada por región |
+| `GET` | `/api/aduanas` | Recaudación desglosada por aduana |
+| `GET` | `/api/contribuyentes` | Top 10 contribuyentes del día |
+| `GET` | `/api/verificar` | Verificación de consistencia con Metabase |
+
+### Endpoints de Administración
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `GET` / `POST` | `/api/admin/config` | Obtener configuración de paneles |
+| `POST` | `/api/admin/guardar` | Guardar configuración de un panel |
+
+### Ejemplo de Respuesta — `GET /api/recaudacion`
+
+```json
 {
-  "regiones": [
-    {
-      "region": "Capital",
-      "total": 12345,
-      "dias": 30,
-      "ultima_fecha": "2026-07-08T00:00:00",
-      "tendencia": 2.5,
-      "participacion": 15.3,
-      "detalle_diario": [
-        {"fecha": "2026-07-08T00:00:00", "total": 450},
-        {"fecha": "2026-07-07T00:00:00", "total": 420}
-      ]
-    }
-  ],
-  "total_general": 80500,
-  "timestamp": "2026-07-08T14:21:37.979768"
+  "total_bs": 1234567.89,
+  "total_usd": 34567.12,
+  "pagos_sin_conciliar": 1520,
+  "pagos_conciliados": 3200,
+  "pagos_sin_conciliar_ayer": 1480
 }
+```
 
-================================================================================
-5. ESTRUCTURA DE DATOS
-================================================================================
+### Ejemplo de Respuesta — `GET /api/regiones`
 
-Objeto de Respuesta Completo /api/datos
----------------------------------------
+```json
 {
-  "recaudacion": {
-    "total": 100000,
-    "mes_actual": 25000,
-    "mes_anterior": 22000,
-    "tendencia": 13.64
-  },
-  "maquinas": {
-    "total": 5000,
-    "activas": 3750,
-    "inactivas": 1250
-  },
-  "declaraciones": {
-    "total": 8000,
-    "pagadas": 5200,
-    "pendientes": 2800
-  },
   "regiones": [
-    {
-      "region": "Capital",
-      "total": 15000,
-      "dias": 30,
-      "ultima_fecha": "2026-07-08T00:00:00",
-      "tendencia": 2.5,
-      "participacion": 15.0,
-      "detalle_diario": [...]
-    }
+    { "region": "SECTOR DE TRIBUTOS INTERNOS MARACAIBO", "total": 456789.12 },
+    { "region": "SECTOR DE TRIBUTOS INTERNOS CARACAS", "total": 345678.90 }
   ],
-  "series_temporales": [
-    {"mes": "Jul 2026", "valor": 8500},
-    {"mes": "Jun 2026", "valor": 8200}
+  "total_general": 802468.02,
+  "timestamp": "2026-07-14T10:30:00.000Z"
+}
+```
+
+---
+
+## Estructura de Datos
+
+### Respuesta completa — `GET /api/datos`
+
+```json
+{
+  "status": "success",
+  "timestamp": "2026-07-14T10:30:00.000Z",
+  "recaudacion": {
+    "total_bs": 1234567.89,
+    "total_usd": 34567.12,
+    "pagos_sin_conciliar": 1520,
+    "pagos_conciliados": 3200,
+    "pagos_sin_conciliar_ayer": 1480
+  },
+  "ayer": {
+    "recaudacion": {
+      "total_bs": 1100000.00,
+      "total_usd": 30000.00,
+      "total_regiones": 950000.00,
+      "total_aduanas": 150000.00,
+      "pagos": 1480
+    },
+    "regiones": [ ... ],
+    "aduanas": [ ... ],
+    "fecha": "2026-07-13"
+  },
+  "regiones": [ ... ],
+  "aduanas": [ ... ],
+  "contribuyentes": [
+    {
+      "nombre": "EMPRESA EJEMPLO C.A.",
+      "rif": "J-12345678-9",
+      "cantidad_pagos": 15,
+      "total": 250000.00
+    }
   ],
   "ticker": [
-    {"titulo": "Recaudacion Total", "valor": 100000, "cambio": 13.64},
-    {"titulo": "Capital", "valor": 15000, "cambio": 2.5}
+    { "titulo": "💰 Recaudación USD", "valor": 34567.12, "cambio": 0 },
+    { "titulo": "🇻🇪 Recaudación Bs", "valor": 1234567.89, "cambio": 0 }
   ],
-  "proyecciones": {
-    "proyeccion_mensual": 108000,
-    "proyeccion_anual": 1250000,
-    "crecimiento_estimado": 8.5,
-    "meta_recaudacion": 115000
-  },
-  "estado_declaraciones": [
-    {"estado": "Pagadas", "cantidad": 3200},
-    {"estado": "Pendientes", "cantidad": 2400}
-  ],
-  "distribucion_impuestos": [
-    {"nombre": "IVA", "valor": 25000},
-    {"nombre": "ISLR", "valor": 18000}
-  ],
-  "timestamp": "2026-07-08T14:21:37.979768"
+  "configuracion": {
+    "tipos_documento": 148,
+    "filtro_situacion": "22",
+    "filtro_conciliado": "N",
+    "mensaje": "Usando EXACTAMENTE la misma lógica que Metabase"
+  }
 }
+```
 
-================================================================================
-6. FRONTEND DASHBOARD
-================================================================================
+---
 
-Archivos HTML
--------------
-dashboard_seniat_v2.html - Dashboard principal con todas las graficas
+## Frontend — Dashboard
 
-Componentes Visuales
---------------------
-- Graficas: Lightweight Charts
-- Iconos: Font Awesome 6
-- Tipografia: Google Fonts (Inter)
-- Diseño: CSS Grid responsive
+### Componentes Visuales
 
-Actualizacion de Datos
-----------------------
-- Intervalo: 30 segundos
-- Mecanismo: setInterval(fetchData, 30000)
-- Cache: Controlada por el backend
+| Componente | Tecnología |
+|---|---|
+| Iconos | Font Awesome 6 |
+| Tipografía | Google Fonts (Inter) |
+| Diseño | CSS Grid responsive |
+| Actualización | Cada 30 segundos (controlada por caché del backend) |
 
-================================================================================
-7. REGIONES Y CONSULTAS SQL
-================================================================================
+### Páginas
 
-Mapeo de Regiones
------------------
-Capital          -> REGION CAPITAL          -> declaraciones_capital.sql
-Zuliana          -> REGION ZULIANA          -> declaracion_zuliana.sql
-Central          -> REGION CENTRAL          -> declaraciones_central.sql
-Falcon           -> REGION FALCON           -> declaraciones_falcon.sql
-Guayana          -> REGION GUAYANA          -> declaraciones_guayana.sql
-Insular          -> REGION INSULAR          -> declaraciones_insular.sql
-Los Llanos       -> REGION LOS LLANOS       -> declaraciones_losllanos.sql
-Nor Oriental     -> REGION NOR ORIENTAL     -> declaraciones_norOriental.sql
-Centro Occidental-> REGION CENTRO OCCIDENTAL-> declaraciones_occidental.sql
-Los Andes        -> REGION LOS ANDES        -> declaracion_losAndes.sql
-Libertador       -> REGION LIBERTADOR       -> declaracion_libertador.sql
-Cobros/Aduanas   -> REGION DE LA UNIDAD DE COBROS Y RECUPERACIONES DE ADUANAS -> declaraciones_cobros_recuperaciones_aduanas.sql
-Especiales       -> REGION DE CONTRIBUYENTES ESPECIALES -> declaraciones_especiales_plzVEN.sql
+| Ruta | Descripción |
+|---|---|
+| `/` (ó `/admin.html`) | Panel de administración — crear y gestionar pantallas |
+| `/usuario?user=<ID>` (ó `/usuario.html?user=<ID>`) | Dashboard personalizado por usuario/pantalla |
 
-Estructura de Consultas SQL
----------------------------
+---
+
+## Regiones y Consultas SQL
+
+Las consultas SQL se ejecutan contra la base **DataWarehouse** (ID: 21) a través de la API de Metabase.
+
+### Filtros aplicados (mismos que Metabase)
+
+- `SITUACION_PAGO = '22'` — Pagos confirmados
+- `CONCILIADO_PAGO = 'N'` — No conciliados (datos del día)
+- `FECHA_RECAUDACION_PAGO = TRUNC(SYSDATE)` — Solo fecha de hoy
+- **148 tipos de documento** filtrados explícitamente
+
+### Ejemplo de Consulta — Recaudación por Región
+
+```sql
 SELECT
-  TRUNC(Declaracion.FECHA_DECLARACION, 'DD') AS FECHA_DECLARACION,
-  COUNT(*) AS TOTAL_DECLARACIONES
-FROM
-  "DBO"."DECLARACION" Declaracion
-  LEFT JOIN "DATOSCONTRIBUYENTE"."CONTRIBUYENTE" Contribuyente
-    ON Declaracion.ID_CONTRIBUYENTE = Contribuyente.ID_CONTRIBUYENTE
-  LEFT JOIN "DATOSCONTRIBUYENTE"."DEPENDENCIA" Dependencia
-    ON Contribuyente.DEPENDENCIA_ADSCRIPCION_C = Dependencia.CODIGO_DEPENDENCIA
-  LEFT JOIN "DATOSCONTRIBUYENTE"."REGION" Region
-    ON Dependencia.REGION_DEPENDENCIA = r.CODIGO_REGION
-  LEFT JOIN "DBO"."SITUACION_DECLARACION" Situacion_Declaracion
-    ON Declaracion.SITUACION_DECLARACION = Situacion_Declaracion.CODIGO_SITUACION_DECLARACION
-WHERE
-  Declaracion.FECHA_DECLARACION >= TRUNC(SYSDATE - 30)
-  AND Declaracion.FECHA_DECLARACION < TRUNC(SYSDATE + 1)
-  AND Region.NOMBRE_REGION = 'REGION CAPITAL'
-  AND Situacion_Declaracion.DESCRIPCION_SITUACION_DECLARAC IN (
-    'DEFINITIVA CERTIFICADA - PAGO > 0',
-    'DEFINITIVA CERTIFICADA - PAGO CERO',
-    'DECLARACION PAGADA',
-    'DEFINITIVA - PENDIENTE RECEPCION DE PAGO',
-    'DEFINITIVA CERTIFICADA - PENDIENTE DE PAGO DE PORCIONES'
-  )
-GROUP BY
-  TRUNC(Declaracion.FECHA_DECLARACION, 'DD')
-ORDER BY
-  FECHA_DECLARACION ASC;
+    dep.NOMBRE_DEPENDENCIA AS REGION,
+    SUM(p.MONTO_TOTAL_PAGO) AS TOTAL
+FROM "DBO"."MOVIMIENTO_PAGO" p
+LEFT JOIN "DATOSCONTRIBUYENTE"."DEPENDENCIA" dep
+    ON p.DEPENDENCIA_PAGO = dep.CODIGO_DEPENDENCIA
+WHERE p.FECHA_RECAUDACION_PAGO = TRUNC(SYSDATE)
+    AND p.SITUACION_PAGO = '22'
+    AND p.CONCILIADO_PAGO = 'N'
+    AND (TIPO_DOCUMENTO_PAGO = '00011' OR TIPO_DOCUMENTO_PAGO = '00012' OR ...)
+GROUP BY dep.NOMBRE_DEPENDENCIA
+ORDER BY TOTAL DESC
+```
 
-================================================================================
-8. INSTALACION Y CONFIGURACION
-================================================================================
+> Para ver la lista completa de tipos de documento, consulte la constante `TIPOS_DOCUMENTO_METABASE` en [`lib/metabase.ts`](lib/metabase.ts) o [`api_server.py`](api_server.py).
 
-Requisitos del Sistema
-----------------------
-- Python 3.8 o superior
-- Windows / Linux / macOS
-- Navegador actualizado (Chrome, Firefox, Edge)
-- Conexion a Internet (para Metabase API)
+---
 
-Estructura de Directorios
--------------------------
-C:\Users\Soporte\Desktop\metabase.0\
-├── Declaraciones/
-│   ├── declaraciones_capital.sql
-│   ├── declaracion_zuliana.sql
-│   ├── declaraciones_central.sql
-│   ├── declaraciones_falcon.sql
-│   ├── declaraciones_guayana.sql
-│   ├── declaraciones_insular.sql
-│   ├── declaraciones_losllanos.sql
-│   ├── declaraciones_norOriental.sql
-│   ├── declaraciones_occidental.sql
-│   ├── declaracion_losAndes.sql
-│   ├── declaracion_libertador.sql
-│   ├── declaraciones_cobros_recuperaciones_aduanas.sql
-│   └── declaraciones_especiales_plzVEN.sql
-├── scripts/
-│   └── .env
-├── api_server.py
-├── dashboard_seniat_v2.html
-├── dashboard_seniat.html
-└── METABASE_API (1).md
+## Guía de Uso
 
-Configuracion de Variables de Entorno
--------------------------------------
-Crear archivo .env en scripts/ o en la raiz:
+### Inicio del Sistema
 
-METABASE_URL="https://analisisdatos.seniat.gob.ve"
-METABASE_API_KEY="mb_fHMYDYO1xgYhh/QlQ8j/c4+i4YVynQHaDE8gc/BV8e0="
-METABASE_DATABASE_ID=22
-METABASE_SCHEMA=ITAXUSER
-METABASE_DW_ID=21
+1. Configurar el archivo `.env` (ver [Instalación](#instalación-y-configuración)).
+2. Ejecutar el servidor (Next.js o Python).
+3. Abrir el dashboard en el navegador.
+4. Verificar el indicador de conexión ("API local activa" / "Conectado").
 
-Pasos de Instalacion
---------------------
-1. Clonar/Descargar el proyecto en C:\Users\Soporte\Desktop\metabase.0
+### Panel de Administración (`/`)
 
-2. Verificar archivos SQL:
-   cd C:\Users\Soporte\Desktop\metabase.0\Declaraciones
-   dir *.sql
+Desde este panel puedes:
 
-3. Ejecutar el servidor:
-   cd C:\Users\Soporte\Desktop\metabase.0
-   python api_server.py
+- **Crear pantallas personalizadas** con un ID único.
+- **Asignar regiones** específicas a cada pantalla.
+- **Elegir componentes visibles** (recaudación, máquinas, declaraciones).
+- **Obtener el enlace** de la pantalla para monitores/TV.
 
-4. Abrir el dashboard en el navegador:
-   dashboard_seniat_v2.html
+### Dashboard de Usuario (`/usuario?user=<ID>`)
 
-5. Verificar API:
-   curl http://localhost:8000/api/status
+Muestra los datos filtrados según la configuración de la pantalla:
 
-================================================================================
-9. GUIA DE USO
-================================================================================
+- Tarjetas de recaudación con tendencias.
+- Tabla de regiones asignadas con montos.
+- Actualización automática cada 30 segundos.
 
-Inicio del Sistema
-------------------
-1. Ejecutar el servidor en la terminal:
-   cd C:\Users\Soporte\Desktop\metabase.0
-   python api_server.py
+---
 
-2. Abrir el dashboard en el navegador:
-   - Doble clic en dashboard_seniat_v2.html
-   - O arrastrar al navegador
+## Seguridad
 
-3. Verificar conexion:
-   - Buscar el indicador verde "Conectado"
-   - Verificar que los datos se carguen
+- **API Key**: Se almacena exclusivamente en `.env` (nunca en el código fuente).
+- **`.env`** está en `.gitignore` para evitar exposición accidental.
+- **Caché**: Los datos se mantienen en memoria, no se persisten en disco.
+- **Conexión HTTPS**: Comunicación cifrada con la API de Metabase.
+- **CORS**: Configurado para `localhost` en desarrollo.
 
-Lectura del Dashboard
----------------------
-Recaudacion Total (Tarjeta Principal)
-- Numero grande: Total recaudado
-- Porcentaje: Variacion vs mes anterior
-- Regiones: Lista con barras de participacion
-- Proyeccion: Estimacion mensual
+> **Advertencia:** El servidor Python standalone incluye un endpoint `/api/sql` que permite ejecutar consultas SQL arbitrarias. Este endpoint es solo para desarrollo/depuración y **no debe exponerse en producción**.
 
-Maquinas Fiscales
-- Total: Equipos registrados
-- Activas: En funcionamiento
-- Inactivas: Fuera de servicio
+---
 
-Declaraciones
-- Total: Numero de declaraciones
-- Pagadas: Con pago realizado
-- Pendientes: En espera de pago
-- Tasa de cumplimiento: Porcentaje pagado
+## Solución de Problemas
 
-Grafica de Evolucion
-- Eje X: Meses (ultimos 12)
-- Eje Y: Monto recaudado
-- Area: Tendencia historica
+| Problema | Causa Probable | Solución |
+|---|---|---|
+| El servidor no inicia | Puerto ocupado | Verificar con `netstat -ano \| findstr :8000` (Python) o `:3000` (Next.js) |
+| API no responde | Servidor no está corriendo | Ejecutar `curl http://localhost:8000/api/status` |
+| Datos no cargan | Sin conexión a Metabase | Verificar conectividad de red y API Key en `.env` |
+| Error HTTP 401/403 | Token inválido o revocado | Verificar `METABASE_API_KEY` en `.env` |
+| Consultas SQL fallan | Tablas inexistentes o permisos | Revisar esquema (`DBO.` vs `ITAXUSER.`) y permisos del usuario |
+| Caché no se actualiza | Tiempo de caché no expirado | Reiniciar el servidor o esperar 30 segundos |
+| `npm run dev` falla | Dependencias no instaladas | Ejecutar `npm install` |
 
-Distribucion por Impuesto
-- IVA: Impuesto al valor agregado
-- ISLR: Impuesto sobre la renta
-- Aranceles: Impuestos aduaneros
-- Renta Petrolera: Ingresos petroleros
-- Retenciones: Retenciones fiscales
-- Multas: Sanciones tributarias
+---
 
-Estado de Declaraciones
-- Pagadas: Completadas
-- Pendientes: En proceso
-- Vencidas: Fuera de plazo
-- En Proceso: En revision
+## Próximas Mejoras
 
-Interpretacion de Datos
------------------------
-Tendencia Positiva  -> Crecimiento en recaudacion -> Mantener politicas
-Tendencia Negativa  -> Disminucion en recaudacion -> Investigar causas
-Alta Participacion  -> Region con mayor actividad -> Enfocar recursos
-Baja Participacion  -> Region con menor actividad -> Analizar causas
-Cumplimiento Alto   -> Buena cultura tributaria -> Mantener comunicacion
-Cumplimiento Bajo   -> Problemas de cobro -> Revisar estrategias
+- [ ] Autenticación de usuarios (login/roles).
+- [ ] Exportación de datos (CSV, Excel, PDF).
+- [ ] Alertas y notificaciones por umbral.
+- [ ] Panel de administración avanzado.
+- [ ] Historial de consultas y auditoría.
+- [ ] Dashboard personalizable (drag & drop).
+- [ ] Mapas de calor geográficos interactivos.
+- [ ] Análisis predictivo con IA.
 
-API para Desarrolladores
-------------------------
-Desde Python:
-import requests
+---
 
-# Obtener todos los datos
-response = requests.get('http://localhost:8000/api/datos')
-data = response.json()
+## Documentación Adicional
 
-# Obtener datos de una region
-response = requests.get('http://localhost:8000/api/region-detalle/Capital')
-region = response.json()
-
-Desde JavaScript:
-// Obtener todos los datos
-fetch('http://localhost:8000/api/datos')
-  .then(response => response.json())
-  .then(data => console.log(data));
-
-// Obtener regiones
-fetch('http://localhost:8000/api/regiones')
-  .then(response => response.json())
-  .then(data => console.log(data.regiones));
-
-================================================================================
-10. SEGURIDAD Y BUENAS PRACTICAS
-================================================================================
-
-Seguridad de Datos
-------------------
-- API Key: No expuesta en frontend (solo backend)
-- CORS: Limitado a localhost en desarrollo
-- Cache: Datos en memoria, no en disco
-- Conexion: HTTPS con Metabase
-
-Buenas Practicas
-----------------
-- Variables de entorno para credenciales
-- Cache para reducir consultas
-- Timeout en consultas (600 segundos)
-- Manejo de errores en todas las funciones
-- Logs para debugging
-- Versionado de archivos SQL
-
-================================================================================
-11. SOLUCION DE PROBLEMAS
-================================================================================
-
-Error: Servidor no inicia
--------------------------
-Verificar que el puerto 8000 este libre:
-netstat -ano | findstr :8000
-
-Error: API no responde
-----------------------
-Verificar que el servidor este corriendo:
-curl http://localhost:8000/api/status
-
-Error: Datos no cargan
-----------------------
-1. Verificar conexion a internet
-2. Verificar API Key en .env
-3. Verificar que los archivos SQL existan
-
-Error: Consultas SQL fallan
----------------------------
-1. Verificar que las tablas existan en Oracle
-2. Verificar permisos de usuario
-3. Revisar sintaxis SQL en archivos
-
-Error: Cache no se actualiza
-----------------------------
-1. Reiniciar el servidor
-2. Verificar CACHE_DURATION en api_server.py
-
-================================================================================
-12. PROXIMAS MEJORAS
-================================================================================
-
-Mejoras Planeadas
------------------
-1. Autenticacion de usuarios
-2. Exportacion de datos (CSV, Excel)
-3. Alertas y notificaciones
-4. Panel de administracion
-5. Configuracion de actualizacion por componente
-6. Soporte para mas fuentes de datos
-7. Historial de consultas
-8. Dashboard personalizable
-9. Mapas de calor geograficos
-10. Analisis predictivo con IA
-
-================================================================================
-FIN DEL DOCUMENTO
-================================================================================
+- [Guía de la API de Metabase](docs/METABASE_API.md) — Credenciales, endpoints y ejemplos de uso.
+- [`.env.example`](.env.example) — Plantilla de variables de entorno.
