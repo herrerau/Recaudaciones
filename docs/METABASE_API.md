@@ -1,336 +1,125 @@
-# API Metabase — Guía de uso (SENIAT FE Exploración)
+# 04 · Conexión con la API de Metabase (SENIAT) — conocimiento operativo
 
-Documento de referencia para consultar datos Oracle a través de la instancia Metabase desde este servidor/proyecto.
+> El proyecto destino ya tiene su capa de conexión organizada; este documento traslada
+> **lo aprendido operando contra la instancia real** para contrastarlo con esa capa:
+> endpoints, límites, errores frecuentes y el mapa de bases/esquemas.
+> Referencias completas en el origen: `METABASE_API.md` y `METABASE_INSTANCIA_SENIAT.md`.
 
-> **Fuente de verdad:** las variables viven en `.env` (archivo ignorado por git). Este documento replica los valores operativos vigentes.
+## 1. Instancia
 
----
+| Atributo | Valor |
+|---|---|
+| URL pública | `https://analisisdatos.seniat.gob.ve` |
+| URL alterna (red interna) | `http://172.16.56.75:3000` |
+| Versión | Metabase v0.54.9 (Docker) |
+| Auth | Header `x-api-key: <token>` (usuario API superuser) |
+| Embedding JWT | Habilitado (`POST /api/embed/card/{jwt}/query`) |
+| Zona horaria de reportes | `America/La_Paz` |
 
-## 1. Credenciales y parámetros
+⚠️ El token NO viaja en este kit. Variables esperadas en `.env` (git-ignored):
+`METABASE_URL`, `METABASE_URL_ALT`, `METABASE_API_KEY`, `METABASE_DATABASE_ID=22`,
+`METABASE_SCHEMA=ITAXUSER`, `METABASE_DW_ID=21`.
 
-| Parámetro | Variable de entorno | Valor |
-|---|---|---|
-| URL principal | `METABASE_URL` | `https://analisisdatos.seniat.gob.ve` |
-| URL alterna (red interna) | `METABASE_URL_ALT` | `http://172.16.56.75:3000` |
-| API Key (token) | `METABASE_API_KEY` | *(ver archivo `.env`)* |
-| Usuario asociado al token | — | `API SENIATFE` (superuser) |
-| Base SENIAT FE | `METABASE_DATABASE_ID` | `22` |
-| Nombre base SENIAT FE | `METABASE_DATABASE_NAME` | `SENIATFE` |
-| Esquema SENIAT FE | `METABASE_SCHEMA` | `ITAXUSER` |
-| Base DataWarehouse | `METABASE_DW_ID` | `21` |
-| Nombre DataWarehouse | `METABASE_DW_NAME` | `ORACLE 19c DataWarehouse` |
-
-### Cargar variables en la shell
-
-```bash
-cd /home/k8s/seniatfeexploracion
-set -a && source .env && set +a
-```
-
-O exportar manualmente:
-
-```bash
-export METABASE_URL="https://analisisdatos.seniat.gob.ve"
-export METABASE_API_KEY="<TU_API_KEY_AQUÍ>"  # ver .env.example
-export METABASE_DATABASE_ID=22
-export METABASE_SCHEMA=ITAXUSER
-export METABASE_DW_ID=21
-```
-
----
-
-## 2. Autenticación
-
-Metabase acepta el token en el header HTTP:
-
-```
-x-api-key: <METABASE_API_KEY>
-Content-Type: application/json
-```
-
-No se usa usuario/contraseña en las llamadas API; el token identifica al usuario `API SENIATFE`.
-
----
-
-## 3. Verificar conexión
-
-### Usuario actual (health check)
-
-```bash
-curl -s -H "x-api-key: $METABASE_API_KEY" \
-  "$METABASE_URL/api/user/current" | python3 -m json.tool
-```
-
-Respuesta esperada: HTTP `200` con JSON del usuario (`email`, `is_superuser`, etc.).
-
-### Consulta mínima a SENIATFE
-
-```bash
-curl -s -X POST \
-  -H "x-api-key: $METABASE_API_KEY" \
-  -H "Content-Type: application/json" \
-  "$METABASE_URL/api/dataset" \
-  -d '{
-    "database": 22,
-    "type": "native",
-    "native": {
-      "query": "SELECT ID_LIB_REPORTEZ, FECHA_REPORTEZ FROM ITAXUSER.LIB_REPORTEZ WHERE ROWNUM <= 1"
-    },
-    "parameters": []
-  }' | python3 -m json.tool
-```
-
----
-
-## 4. Endpoints utilizados en este proyecto
+## 2. Endpoints que la capa debe cubrir
 
 | Método | Ruta | Uso |
 |---|---|---|
-| `GET` | `/api/user/current` | Verificar token y usuario |
-| `POST` | `/api/dataset` | Ejecutar SQL nativo (principal) |
+| `GET` | `/api/user/current` | Health check del token (esperar 200) |
+| `POST` | `/api/dataset` | Ejecutar SQL nativo — el caballo de batalla |
 | `GET` | `/api/search?q=<nombre>` | Buscar tablas por nombre |
-| `GET` | `/api/table/<table_id>/query_metadata` | Columnas y metadatos de una tabla |
+| `GET` | `/api/table/<id>/query_metadata` | Columnas y tipos de una tabla |
+| `GET` | `/api/database/<id>/metadata` | Inventario de esquemas/tablas |
 
----
-
-## 5. Ejecutar consultas SQL (`POST /api/dataset`)
-
-### Cuerpo de la petición
+### Cuerpo canónico de `POST /api/dataset`
 
 ```json
 {
   "database": 22,
   "type": "native",
-  "native": {
-    "query": "SELECT ... FROM ITAXUSER.LIB_REPORTEZ WHERE ROWNUM <= 10"
-  },
+  "native": { "query": "SELECT ... FROM ITAXUSER.LIB_REPORTEZ WHERE ROWNUM <= 10" },
   "parameters": [],
-  "constraints": {
-    "max-results": 10000,
-    "max-results-bare-rows": 10000
-  }
+  "constraints": { "max-results": 10000, "max-results-bare-rows": 10000 }
 }
 ```
 
-| Campo | Descripción |
-|---|---|
-| `database` | ID de la base en Metabase (`22` = SENIATFE, `21` = DataWarehouse) |
-| `type` | Siempre `"native"` para SQL directo |
-| `native.query` | Consulta SQL Oracle |
-| `parameters` | Lista vacía si no hay parámetros de Metabase |
-| `constraints` | Opcional; limita filas devueltas (recomendado en tablas grandes) |
+### Respuestas
 
-### Respuesta exitosa
+- Éxito: `{"status":"completed","data":{"cols":[...],"rows":[[...]]},"row_count":N}`.
+- Error: `{"status":"failed","error":"ORA-..."}` — **ojo:** según la versión el mensaje
+  puede venir en `via[0].error`. La capa debe revisar ambos:
 
-```json
-{
-  "status": "completed",
-  "data": {
-    "cols": [{"name": "ID_LIB_REPORTEZ", ...}],
-    "rows": [[12345, "2025-01-15T00:00:00+00:00"]]
-  },
-  "row_count": 1
-}
+```python
+if result.get("status") == "failed" or result.get("error"):
+    err = result.get("error") or (result.get("via") or [{}])[0].get("error")
+    raise RuntimeError(f"Consulta fallida: {err}")
 ```
 
-### Respuesta con error
+El cliente Python de referencia (stdlib pura, carga `.env` sin dependencias) está en
+[`assets/code/metabase_client.py`](./assets/code/metabase_client.py).
 
-```json
-{
-  "status": "failed",
-  "error": "ORA-00942: table or view does not exist"
-}
-```
+## 3. Mapa de bases → casos de uso
 
-O en `via[0].error` según la versión de Metabase.
+| Caso de uso | Base (ID) | Esquema.tablas clave |
+|---|---|---|
+| Declaraciones tributarias (IVA=impuesto 30, ISLR) | ORACLE 19c DataWarehouse (**21**) | `DBO.DECLARACION`, `DBO.MOVIMIENTO_PAGO`, `DBO.COMPROMISO_PAGO`, `DBO.TASA_CAMBIO_DIARIA` |
+| Contribuyentes y regiones (GRTI) | **21** | `DATOSCONTRIBUYENTE.CONTRIBUYENTE`, `REGION`, `DEPENDENCIA` |
+| Facturación electrónica / Reportes Z | SENIATFE (**22**) | `ITAXUSER.LIB_REPORTEZ` (~158 columnas), `CONT_MAQUINAS_FISCALES`, `CONT_CONTRIBUYENTES`, `CONT_SUCURSALES` |
+| Software fiscal / validaciones | FISCADB (**23**, postgres) | `reporte_fiscal`, `fiscales`, `softwares_registrados` |
+| Repositorio DW / aranceles | DWREPO (**25**) | `EXCOEX.*` |
 
----
+Errores de esquema típicos: en la 22 el esquema es `ITAXUSER.`, en la 21 es `DBO.` o
+`DATOSCONTRIBUYENTE.` — mezclar prefijos produce `ORA-00942`.
 
-## 6. Bases de datos disponibles
+## 4. Consultas SQL de las colecciones (insumo directo)
 
-### 6.1 SENIATFE (`database: 22`)
+La carpeta [`assets/sql/`](./assets/sql/) contiene las **28 consultas** de las
+colecciones Metabase del origen: recaudación y declaraciones por GRTI (Capital,
+Central, Zuliana, Los Andes, Los Llanos, Falcón, Guayana, Insular, Nor Oriental,
+Occidental, Libertador, Contribuyentes Especiales), recaudación nacional, pagos y
+aduanas. Son el punto de partida de las series del dashboard en el destino.
 
-Esquema principal: **`ITAXUSER`**.
+## 5. Límites y buenas prácticas de consulta (aprendidas a golpes)
 
-Tablas clave del proyecto:
+1. **Nunca `SELECT *` ni `COUNT(*)` sin filtro de fecha** en tablas grandes
+   (`LIB_REPORTEZ` es una tabla de hechos masiva).
+2. **Rango de fechas cerrado**: `FECHA >= DATE '...' AND FECHA < DATE '...'`
+   (evita problemas de bordes y usa particiones/índices).
+3. **`ROWNUM <= N`** para muestras exploratorias (Oracle; no hay `LIMIT`).
+4. **`constraints` siempre** en el body para acotar filas devueltas.
+5. **Timeout de 600 s** en el cliente para consultas pesadas; si aún así expira,
+   dividir en fases/lotes (por mes o por rangos de ID) en vez de un JOIN masivo.
+6. **Extracciones masivas**: particionar por mes; nunca una sola llamada gigante.
+7. Preferir la URL principal y probar la alterna como fallback
+   (patrón `METABASE_URL_OK` del cliente de referencia).
 
-| Tabla | Descripción |
-|---|---|
-| `LIB_REPORTEZ` | Reportes Z (tabla de hechos, ~158 columnas) |
-| `CONT_CONTRIBUYENTES` | Contribuyentes |
-| `CONT_MAQUINAS_FISCALES` | Máquinas fiscales |
-| `CONT_SUCURSALES` | Sucursales |
-| `CONT_DISTRIBUIDOR` | Distribuidores |
-| `CONT_MODELO_DISTRIBUIDOR` | Relación distribuidor ↔ modelo |
-
-Ejemplo — conteo de reportes Z:
-
-```bash
-curl -s -X POST \
-  -H "x-api-key: $METABASE_API_KEY" \
-  -H "Content-Type: application/json" \
-  "$METABASE_URL/api/dataset" \
-  -d '{
-    "database": 22,
-    "type": "native",
-    "native": {
-      "query": "SELECT COUNT(*) AS TOTAL FROM ITAXUSER.LIB_REPORTEZ WHERE FECHA_REPORTEZ >= DATE '\''2025-01-01'\'' AND FECHA_REPORTEZ < DATE '\''2026-01-01'\''"
-    }
-  }'
-```
-
-### 6.2 ORACLE 19c DataWarehouse (`database: 21`)
-
-Usada para **declaraciones tributarias** (IVA, ISLR, etc.).
-
-Esquemas relevantes:
-
-| Esquema | Contenido |
-|---|---|
-| `DBO` | `DECLARACION` y tablas del núcleo declarativo |
-| `DATOSCONTRIBUYENTE` | `CONTRIBUYENTE`, `DEPENDENCIA`, `REGION` |
-
-Ejemplo — declaraciones IVA (impuesto 30):
-
-```bash
-curl -s -X POST \
-  -H "x-api-key: $METABASE_API_KEY" \
-  -H "Content-Type: application/json" \
-  "$METABASE_URL/api/dataset" \
-  -d '{
-    "database": 21,
-    "type": "native",
-    "native": {
-      "query": "SELECT ID_DECLARACION, RIF_DECLARACION, FECHA_INICIO_PERIODO_D FROM DBO.DECLARACION WHERE IMPUESTO_DECLARACION = '\''30'\'' AND ROWNUM <= 5"
-    }
-  }'
-```
-
-### 6.3 Otras bases visibles en la instancia
-
-| ID | Nombre | Motor | Notas |
-|---|---|---|---|
-| 22 | SENIATFE | oracle | Facturación electrónica / reportes Z |
-| 21 | ORACLE 19c DataWarehouse | oracle | Declaraciones |
-| 25 | ORACLE 19c DWREPO | oracle | Repositorio DW |
-| 23 | FISCADB | postgres | — |
-| 27 | Datax - Region Central | oracle | — |
-
----
-
-## 7. Ejemplo de uso en TypeScript (Next.js)
-
-La lógica de consultas vive en [`lib/metabase.ts`](../lib/metabase.ts). A continuación un ejemplo simplificado:
-
-```typescript
-import { metabaseQuery } from "@/lib/metabase";
-
-// Consulta genérica
-const rows = await metabaseQuery(
-  `SELECT ID_LIB_REPORTEZ, FECHA_REPORTEZ
-   FROM ITAXUSER.LIB_REPORTEZ
-   WHERE ROWNUM <= 3`,
-  22 // database ID
-);
-console.log(rows);
-```
-
-Las funciones exportadas por `lib/metabase.ts` (como `getRecaudacionTotalBs()`, `getRecaudacionRegionesHoy()`, etc.) ya encapsulan las consultas SQL y el parseo de resultados.
-
----
-
-## 8. Ejecución del proyecto
-
-### Instalar dependencias e iniciar
-
-```bash
-npm install
-npm run dev
-```
-
-El servidor estará disponible en [http://localhost:3000](http://localhost:3000).
-
-### Compilar para producción
-
-```bash
-npm run build
-npm start
-```
----
-
-## 9. Buenas prácticas y límites
-
-### Tablas grandes (`LIB_REPORTEZ`)
-
-- **No** ejecutar `SELECT *` ni `COUNT(*)` sin filtro de fecha.
-- Filtrar siempre por `FECHA_REPORTEZ` con rango cerrado (`>=` … `<`).
-- Usar `ROWNUM <= N` para muestras exploratorias.
-- Para extracciones masivas, particionar por mes o por lotes de IDs.
-
-### Timeouts
-
-- Consultas pesadas pueden tardar varios minutos; usar timeout de **600 s** en Python.
-- Si hay timeout por JOINs masivos, dividir en fases (como hace `extraer_declaraciones.py`).
-
-### Límite de filas
-
-Usar `constraints` en el body para acotar resultados:
-
-```json
-"constraints": {
-  "max-results": 50000,
-  "max-results-bare-rows": 50000
-}
-```
-
-### Conectividad
-
-| Vía | ¿Funciona desde este servidor? |
-|---|---|
-| Metabase API (`analisisdatos.seniat.gob.ve`) | **Sí** |
-| Oracle directo SENIATFE (`172.17.34.131`) | **No** (sin ruta de red) |
-| Oracle directo DWREPO (`172.16.32.73`) | Depende de red/VPN |
-
-Metabase es la **vía operativa recomendada** desde este ambiente.
-
----
-
-## 10. Solución de problemas
+## 6. Tabla de diagnóstico rápido
 
 | Síntoma | Causa probable | Acción |
 |---|---|---|
-| HTTP 401 / 403 | Token inválido o revocado | Verificar `METABASE_API_KEY` en `.env` |
-| `Falta METABASE_API_KEY` | Variable no exportada | `source .env` antes de ejecutar scripts |
-| `status: failed` + ORA-* | Error SQL o tabla inexistente | Revisar esquema (`ITAXUSER.` vs `DBO.`) |
-| Timeout / HTTP 504 | Consulta muy pesada | Acotar fechas, usar `ROWNUM`, dividir en lotes |
-| Tabla no encontrada en search | Nombre o esquema incorrecto | Confirmar `METABASE_SCHEMA=ITAXUSER` |
+| HTTP 000 / sin respuesta | Sin ruta de red a esa URL | Probar la URL alterna |
+| HTTP 401 / 403 | Token inválido o revocado | Revisar `.env`, rotar token |
+| `status: failed` + `ORA-00942` | Tabla/esquema equivocado | Confirmar prefijo (`ITAXUSER.` vs `DBO.`) |
+| `ORA-00904` | Columna inexistente | Ver columnas con una consulta `ROWNUM <= 1` |
+| Timeout / HTTP 504 | Consulta demasiado pesada | Acotar fechas, ROWNUM, dividir en lotes |
 
-### Comando rápido de diagnóstico
+Health check de un comando:
 
 ```bash
-set -a && source .env && set +a
-echo "URL: $METABASE_URL"
-echo "DB SENIATFE: $METABASE_DATABASE_ID | DW: $METABASE_DW_ID"
 curl -s -o /dev/null -w "HTTP %{http_code}\n" \
-  -H "x-api-key: $METABASE_API_KEY" \
-  "$METABASE_URL/api/user/current"
+  -H "x-api-key: $METABASE_API_KEY" "$METABASE_URL/api/user/current"
 ```
 
----
+## 7. Conectividad (contexto de red)
 
-## 11. Seguridad
+Desde los servidores del proyecto **solo funciona la vía Metabase**; el acceso Oracle
+directo (SENIATFE `172.17.34.131`, DWREPO `172.16.32.73`) no tiene ruta de red o
+depende de VPN. La capa de datos del destino debe asumir Metabase como única puerta.
 
-- El token es de un usuario **superuser**; tratarlo como credencial sensible.
-- `.env` está en `.gitignore` — no subir el token a repositorios públicos.
-- Si este `.md` se versiona en git, valorar referenciar solo `.env` o usar un gestor de secretos.
-- Rotar el token en Metabase si se expone o deja de usarse.
+## 8. Seguridad del token
 
----
-
-## 12. Referencias en el repositorio
-
-- `.env` — credenciales y IDs de bases (no versionado)
-- `.env.example` — plantilla de variables de entorno
-- `lib/metabase.ts` — lógica de conexión a Metabase y consultas SQL
-- `lib/paneles.ts` — gestión de paneles por usuario
-- `docs/sql/` — consultas SQL de referencia
+- El token identifica a un usuario **superuser**: tratarlo como credencial crítica.
+- Solo en `.env` (git-ignored) o en un gestor de secretos; jamás en el bundle del
+  cliente (las consultas se hacen **del lado servidor**), ni en chats/repos.
+- Rotarlo en Metabase si se expone o deja de usarse.
+- Si se necesita exponer datos al navegador, usar el embedding JWT de cards en lugar
+  de reenviar el api-key.
